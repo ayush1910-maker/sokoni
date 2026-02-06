@@ -8,6 +8,7 @@ import database from "./src/db/db.js"
 import config from "./src/db/envConfig.js"
 
 import userRouter from "./src/routes/user.routes.js"
+import adminRouter from "./src/routes/admin.routes.js"
 
 const app = express()
 const server = createServer(app)
@@ -21,6 +22,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 
 app.use("/api/v1/users" , userRouter)
+app.use("/api/v1/admin" , adminRouter)
 
 app.get("/" , (req , res) => {
     res.json({message : "Hello from the server"})
