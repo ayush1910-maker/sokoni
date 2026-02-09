@@ -22,9 +22,17 @@ const Staff = sequelize.define("staff" ,
             type: DataTypes.STRING,
             allowNull: false
         },
-        phone: {
+        email: {
             type: DataTypes.STRING,
             allowNull: false
+        },
+        phone_number: {
+            type: DataTypes.STRING,
+            allowNull: false
+        },
+        whatsApp_number: {
+            type: DataTypes.STRING,
+            allowNull: true
         }
     },
     {

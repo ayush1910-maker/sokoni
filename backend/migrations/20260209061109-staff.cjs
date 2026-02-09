@@ -2,7 +2,7 @@
 
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
-  async up (queryInterface, Sequelize) {
+  async up(queryInterface, Sequelize) {
     await queryInterface.createTable('staff', {
       id: {
         type: Sequelize.INTEGER,
@@ -18,7 +18,8 @@ module.exports = {
           model: 'users',
           key: 'id'
         },
-        onDelete: 'CASCADE'
+        onDelete: 'CASCADE',
+        onUpdate: 'CASCADE'
       },
 
       name: {
@@ -26,26 +27,36 @@ module.exports = {
         allowNull: false
       },
 
-      phone: {
+      email: {
         type: Sequelize.STRING,
         allowNull: false
       },
 
-      created_at: {
-        type: Sequelize.DATE,
+      phone_number: {
+        type: Sequelize.STRING,
+        allowNull: false
+      },
+
+      whatsApp_number: {
+        type: Sequelize.STRING,
+        allowNull: true
+      },
+
+      createdAt: {
         allowNull: false,
+        type: Sequelize.DATE,
         defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
       },
 
-      updated_at: {
-        type: Sequelize.DATE,
+      updatedAt: {
         allowNull: false,
+        type: Sequelize.DATE,
         defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
       }
     });
   },
 
-  async down (queryInterface, Sequelize) {
+  async down(queryInterface, Sequelize) {
     await queryInterface.dropTable('staff');
   }
 };
