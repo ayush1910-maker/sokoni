@@ -13,7 +13,7 @@ const Listing = sequelize.define("listing" ,
             type: DataTypes.INTEGER,
             allowNull: false,
             references: {
-                model: "user", 
+                model: "users", 
                 key: "id",
             },
             onDelete: "CASCADE",

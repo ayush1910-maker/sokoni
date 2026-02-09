@@ -4,7 +4,7 @@ import sequelize from "../db/db.js";
 const ListingPhoto = sequelize.define("listing_photos", 
     {
         id: {
-            type: DataTypes.STRING,
+            type: DataTypes.INTEGER,
             allowNull: false,
             autoIncrement: true,
             primaryKey: true

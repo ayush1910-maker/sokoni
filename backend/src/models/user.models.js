@@ -1,7 +1,7 @@
 import sequelize from "../db/db.js"
 import { DataTypes } from "sequelize"
 
-const User = sequelize.define("user" , 
+const User = sequelize.define("users" , 
     {
         id: {
             type: DataTypes.INTEGER,
@@ -35,7 +35,7 @@ const User = sequelize.define("user" ,
         }
     },
     {
-        tableName: "user",
+        tableName: "users",
         timestamps: true
     }
 )

@@ -13,7 +13,7 @@ const Staff = sequelize.define("staff" ,
             type: DataTypes.INTEGER,
             allowNull: false,
             references: {
-                model: "user",
+                model: "users",
                 key: "id"
             },
             onDelete: "CASCADE"
@@ -26,6 +26,10 @@ const Staff = sequelize.define("staff" ,
             type: DataTypes.STRING,
             allowNull: false
         }
+    },
+    {
+        tableName: "staff",
+        timestamps: true
     }
 )
 
