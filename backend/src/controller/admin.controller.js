@@ -1,6 +1,6 @@
 import { where } from "sequelize";
-import Category from "../models/category.models";
-import SubCategory from "../models/subCategory.models";
+import Category from "../models/category.models.js";
+import SubCategory from "../models/subCategory.models.js";
 
 const Add_Category = async (req , res) => {
     try {
