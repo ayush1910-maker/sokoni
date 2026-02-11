@@ -1,23 +1,30 @@
-import { where } from "sequelize";
 import Category from "../models/category.models.js";
 import SubCategory from "../models/subCategory.models.js";
 
 const Add_Category = async (req , res) => {
     try {
-        const { title } = req.body
+        let categoriesPayload = []
 
-        title = title.trim()
+        if (Array.isArray(req.body.categories)) {
+            categoriesPayload = req.body.categories
+        }
+        else if(req.body.title) {
+            categoriesPayload = [{title: req.body.title}]
+        }
+        else{
+            return res.json({status: false , message: "invalid category payload"})
+        }
 
-        await Category.create({
-            title
-        })
+        const formattedCategories = categoriesPayload.map(cat => ({
+            title: cat.title.trim()
+        }))
+
+        const createdCategories = await Category.bulkCreate(formattedCategories)
 
         return res.json({
             status: true,
-            message: "Category created successfully",
-            data: {
-                title
-            }
+            message: "Category(s) created successfully",
+            data: createdCategories
         })
 
     } catch (error) {
@@ -26,22 +33,38 @@ const Add_Category = async (req , res) => {
 }
 
 const Add_Sub_Category = async (req , res) => {
+    try {
+    const { category_id }  = req.body
 
-    const {category_id , title}  = req.body
+    const categoryId = await Category.findByPk(category_id)
+    if (!categoryId) {
+        return res.json({status: false , message: "Category not found"})
+    }
 
-    await SubCategory.create({
+    let subCategoriesPayload = []
+
+    if (Array.isArray(req.body.subcategories)) {
+        subCategoriesPayload = req.body.subcategories
+    }
+    else if (req.body.title){
+        subCategoriesPayload = [{title: req.body.title}]
+    }
+    else{
+        return res.json({status: false , message: "invalid subCategoryPayload"})
+    }
+
+    const formattedSubCategory = subCategoriesPayload.map(sub => ({
         category_id,
-        title
-    })
+        title: sub.title.trim()
+    }))
 
-    return res.json({
-        status: true,
-        message: "Sub-Created Category Created successfully",
-        data: {
-            category_id,
-            title
-        }
-    })
+    const createdSubCategory = await SubCategory.bulkCreate(formattedSubCategory)
+
+    return res.json({status: false , message: "SubCategories created successfully" , data: createdSubCategory})
+
+    } catch (error) {
+        return res.json({status: false , message:  error.message})
+    }
 }
 
 const Update_Category = async (req , res) => {
@@ -57,6 +80,12 @@ const Update_Category = async (req , res) => {
         }
 
         await category.update({title: updatedTitle})
+
+        return res.json({
+            status: true,
+            message: "Category Update Successfully",
+            data: updatedTitle
+        })
         
     } catch (error) {
         return res.json({status: false , message: error.message})

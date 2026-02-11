@@ -10,8 +10,11 @@ const router = express.Router()
  * @swagger
  * /api/v1/admin/addCategory:
  *   post:
- *     summary: Add a new category
- *     description: Creates a new category with a unique title.
+ *     summary: Add category (single or bulk)
+ *     description: |
+ *       Creates category records.
+ *       - You can create **one category** using `title`
+ *       - OR **multiple categories** using `categories` array
  *     tags:
  *       - Admin / Category
  *     requestBody:
@@ -19,18 +22,36 @@ const router = express.Router()
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             required:
- *               - title
- *             properties:
- *               title:
- *                 type: string
- *                 minLength: 3
- *                 maxLength: 15
- *                 example: Electronics
+ *             oneOf:
+ *               - type: object
+ *                 required:
+ *                   - title
+ *                 properties:
+ *                   title:
+ *                     type: string
+ *                     minLength: 3
+ *                     maxLength: 50
+ *                     example: Electronics
+ *               - type: object
+ *                 required:
+ *                   - categories
+ *                 properties:
+ *                   categories:
+ *                     type: array
+ *                     minItems: 1
+ *                     items:
+ *                       type: object
+ *                       required:
+ *                         - title
+ *                       properties:
+ *                         title:
+ *                           type: string
+ *                           minLength: 3
+ *                           maxLength: 50
+ *                           example: Mobiles
  *     responses:
  *       200:
- *         description: Category created successfully
+ *         description: Category(s) created successfully
  *         content:
  *           application/json:
  *             schema:
@@ -41,15 +62,20 @@ const router = express.Router()
  *                   example: true
  *                 message:
  *                   type: string
- *                   example: Category created successfully
+ *                   example: Category(s) created successfully
  *                 data:
- *                   type: object
- *                   properties:
- *                     title:
- *                       type: string
- *                       example: Electronics
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                         example: 1
+ *                       title:
+ *                         type: string
+ *                         example: Electronics
  *       400:
- *         description: Validation error
+ *         description: Invalid category payload
  *         content:
  *           application/json:
  *             schema:
@@ -60,22 +86,50 @@ const router = express.Router()
  *                   example: false
  *                 message:
  *                   type: string
- *                   example: "title length must be at least 3 characters long"
+ *                   example: invalid category payload
  *       500:
  *         description: Server error
  */
 
-router.post("/addCategory" ,validate(Joi.object({
-    title: Joi.string().min(3).max(15).required()
-})), Add_Category)
+const addCategorySchema = Joi.alternatives().try(
+
+  Joi.object({
+    title: Joi.string()
+      .trim()
+      .min(3)
+      .max(50)
+      .required()
+  }),
+
+  // 🔹 multiple categories
+  Joi.object({
+    categories: Joi.array()
+      .items(
+        Joi.object({
+          title: Joi.string()
+            .trim()
+            .min(3)
+            .max(50)
+            .required()
+        })
+      )
+      .min(1) 
+      .required()
+  })
+
+)
+router.post("/addCategory" ,validate(addCategorySchema), Add_Category)
 
 
 /**
  * @swagger
  * /api/v1/admin/addSubCategory:
  *   post:
- *     summary: Add a sub-category
- *     description: Creates a new sub-category under an existing category.
+ *     summary: Add sub-category (single or bulk)
+ *     description: |
+ *       Creates sub-categories under a given category.
+ *       - Create **one sub-category** using `title`
+ *       - OR create **multiple sub-categories** using `subcategories` array
  *     tags:
  *       - Admin / SubCategory
  *     requestBody:
@@ -83,22 +137,44 @@ router.post("/addCategory" ,validate(Joi.object({
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             required:
- *               - category_id
- *               - title
- *             properties:
- *               category_id:
- *                 type: integer
- *                 example: 1
- *               title:
- *                 type: string
- *                 minLength: 3
- *                 maxLength: 15
- *                 example: Mobiles
+ *             oneOf:
+ *               - type: object
+ *                 required:
+ *                   - category_id
+ *                   - title
+ *                 properties:
+ *                   category_id:
+ *                     type: integer
+ *                     example: 1
+ *                   title:
+ *                     type: string
+ *                     minLength: 3
+ *                     maxLength: 15
+ *                     example: Mobiles
+ *               - type: object
+ *                 required:
+ *                   - category_id
+ *                   - subcategories
+ *                 properties:
+ *                   category_id:
+ *                     type: integer
+ *                     example: 1
+ *                   subcategories:
+ *                     type: array
+ *                     minItems: 1
+ *                     items:
+ *                       type: object
+ *                       required:
+ *                         - title
+ *                       properties:
+ *                         title:
+ *                           type: string
+ *                           minLength: 3
+ *                           maxLength: 15
+ *                           example: Smartphones
  *     responses:
  *       200:
- *         description: Sub-category created successfully
+ *         description: Sub-category(s) created successfully
  *         content:
  *           application/json:
  *             schema:
@@ -109,18 +185,23 @@ router.post("/addCategory" ,validate(Joi.object({
  *                   example: true
  *                 message:
  *                   type: string
- *                   example: Sub-Created Category Created successfully
+ *                   example: SubCategories created successfully
  *                 data:
- *                   type: object
- *                   properties:
- *                     category_id:
- *                       type: integer
- *                       example: 1
- *                     title:
- *                       type: string
- *                       example: Mobiles
- *       400:
- *         description: Validation error
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                         example: 10
+ *                       category_id:
+ *                         type: integer
+ *                         example: 1
+ *                       title:
+ *                         type: string
+ *                         example: Mobiles
+ *       404:
+ *         description: Category not found
  *         content:
  *           application/json:
  *             schema:
@@ -131,15 +212,37 @@ router.post("/addCategory" ,validate(Joi.object({
  *                   example: false
  *                 message:
  *                   type: string
- *                   example: category_id is required
+ *                   example: Category not found
+ *       400:
+ *         description: Invalid sub-category payload
  *       500:
  *         description: Server error
  */
 
-router.post("/addSubCategory" , validate(Joi.object({
+const addSubCategorySchema = Joi.alternatives().try(
+
+  // single sub-category
+  Joi.object({
     category_id: Joi.number().required(),
     title: Joi.string().min(3).max(15).required()
-})) , Add_Sub_Category)
+  }),
+
+  // bulk sub-categories
+  Joi.object({
+    category_id: Joi.number().required(),
+    subcategories: Joi.array()
+      .items(
+        Joi.object({
+          title: Joi.string().min(3).max(15).required()
+        })
+      )
+      .min(1)
+      .required()
+  })
+
+)
+router.post("/addSubCategory" , validate(addSubCategorySchema) , Add_Sub_Category)
+
 
 /**
  * @swagger
