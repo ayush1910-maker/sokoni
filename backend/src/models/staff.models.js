@@ -30,7 +30,7 @@ const Staff = sequelize.define("staff" ,
             type: DataTypes.STRING,
             allowNull: false
         },
-        whatsApp_number: {
+        whatsapp_number: {
             type: DataTypes.STRING,
             allowNull: true
         }
