@@ -3,7 +3,7 @@ import Joi from "joi"
 import { upload } from "../utils/multer.js"
 import verifyJWT from "../middlewares/auth.middleware.js"
 
-import { Add_New_Listing, Add_New_Staff, get_StaffList } from "../controller/listing.controller.js"
+import { Add_New_Listing, Add_New_Staff, delete_staff, edit_staff_details, get_StaffList } from "../controller/listing.controller.js"
 import { validate } from "../utils/validate.js"
 
 const router = express.Router()
@@ -12,12 +12,8 @@ const router = express.Router()
  * @swagger
  * /api/v1/listing/addNewListing:
  *   post:
- *     summary: Create a new listing
- *     description: |
- *       Creates a new listing with photos.
- *       - Requires JWT authentication
- *       - Minimum 1 photo and maximum 10 photos
- *       - If `is_business` is true, `staff_id` array is required
+ *     summary: Add New Listing
+ *     description: Create a new listing with photos. If user role is Business, staff_id is required.
  *     tags:
  *       - Listing
  *     security:
@@ -54,24 +50,25 @@ const router = express.Router()
  *                 example: INR
  *               price:
  *                 type: number
- *                 example: 85000
+ *                 example: 75000
  *               location:
  *                 type: string
- *                 example: Indore
+ *                 example: Indore, Madhya Pradesh
  *               item_condition:
  *                 type: string
- *                 example: Used
+ *                 enum: [new, used]
+ *                 example: used
  *               description:
  *                 type: string
- *                 example: Excellent condition, 6 months old.
+ *                 example: Slightly used iPhone 14 Pro in excellent condition.
  *               is_business:
  *                 type: boolean
- *                 example: false
+ *                 example: true
  *               staff_id:
  *                 type: array
  *                 items:
  *                   type: integer
- *                 example: [3, 4]
+ *                 example: [1, 2]
  *               upload_photos:
  *                 type: array
  *                 items:
@@ -79,7 +76,7 @@ const router = express.Router()
  *                   format: binary
  *     responses:
  *       200:
- *         description: Listing created successfully
+ *         description: Listing added successfully
  *         content:
  *           application/json:
  *             schema:
@@ -93,19 +90,29 @@ const router = express.Router()
  *                   example: listing addedd successfully
  *                 data:
  *                   type: object
- *                   properties:
- *                     id:
- *                       type: integer
- *                       example: 10
- *                     title:
- *                       type: string
- *                       example: iPhone 14 Pro
+ *                   example:
+ *                     id: 10
+ *                     user_id: 5
+ *                     category_id: 1
+ *                     sub_category_id: 2
+ *                     title: iPhone 14 Pro
+ *                     currency: INR
+ *                     price: 75000
+ *                     location: Indore
+ *                     item_condition: used
+ *                     description: Slightly used phone
+ *                     is_business: true
  *       400:
- *         description: Validation error or invalid staff
+ *         description: Validation error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               example:
+ *                 status: false
+ *                 message: Validation error message
  *       401:
  *         description: Unauthorized (Invalid or missing token)
- *       500:
- *         description: Server error
  */
 
 const addNewListingValidation = validate(
@@ -156,6 +163,7 @@ router.post(
     upload.array("upload_photos" , 10) ,
     Add_New_Listing
 )
+
 
 /**
  * @swagger
@@ -243,6 +251,7 @@ router.post("/addNewStaff"  ,validate(Joi.object({
     whatsapp_number: Joi.string().pattern(/^[0-9]{10}$/).optional(),
 })), verifyJWT , Add_New_Staff)
 
+
 /**
  * @swagger
  * /api/v1/listing/getStaffList:
@@ -305,5 +314,138 @@ router.post("/addNewStaff"  ,validate(Joi.object({
  */
 
 router.get("/getStaffList" , verifyJWT , get_StaffList)
+
+
+/**
+ * @swagger
+ * /api/v1/listing/edit-staff-details/{staff_id}:
+ *   patch:
+ *     summary: Edit Staff Details
+ *     description: Update staff details. Only users with Business role can edit their own staff members.
+ *     tags:
+ *       - Staff
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: staff_id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         example: 5
+ *         description: ID of the staff to update
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: Rahul Sharma
+ *               email:
+ *                 type: string
+ *                 example: rahul@gmail.com
+ *               phone_number:
+ *                 type: string
+ *                 pattern: "^[0-9]{10}$"
+ *                 example: "9876543210"
+ *               whatsapp_number:
+ *                 type: string
+ *                 pattern: "^[0-9]{10}$"
+ *                 example: "9876543210"
+ *             required:
+ *               - phone_number
+ *     responses:
+ *       200:
+ *         description: Staff details updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               example:
+ *                 status: true
+ *                 message: details edited successfully
+ *                 data:
+ *                   id: 5
+ *                   business_id: 3
+ *                   name: Rahul Sharma
+ *                   email: rahul@gmail.com
+ *                   phone_number: "9876543210"
+ *                   whatsapp_number: "9876543210"
+ *       400:
+ *         description: Validation or business logic error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               example:
+ *                 status: false
+ *                 message: another staff already exist with these phone number
+ *       401:
+ *         description: Unauthorized (Invalid or missing token)
+ */
+
+router.patch("/edit-staff-details/:staff_id" , validate(Joi.object({
+    name: Joi.string().min(3).optional(),
+    email: Joi.string().email().optional(),
+    phone_number: Joi.string().pattern(/^[0-9]{10}$/).required(),
+    whatsapp_number: Joi.string().pattern(/^[0-9]{10}$/).optional(),
+})), verifyJWT , edit_staff_details)
+
+
+/**
+ * @swagger
+ * /api/v1/listing/delete-staff/{staff_id}:
+ *   delete:
+ *     summary: Delete Staff
+ *     description: Delete a staff member. Only users with Business role can delete their own staff.
+ *     tags:
+ *       - Staff
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: staff_id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         example: 5
+ *         description: ID of the staff to delete
+ *     responses:
+ *       200:
+ *         description: Staff deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               example:
+ *                 status: true
+ *                 message: staff deleted successfully
+ *       400:
+ *         description: Business logic error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               examples:
+ *                 userNotFound:
+ *                   value:
+ *                     status: false
+ *                     message: user not found
+ *                 notBusiness:
+ *                   value:
+ *                     status: false
+ *                     message: only business can delete staff
+ *                 staffNotFound:
+ *                   value:
+ *                     status: false
+ *                     message: Staff not found
+ *       401:
+ *         description: Unauthorized (Invalid or missing token)
+ */
+
+router.delete("/delete-staff/:staff_id" , verifyJWT , delete_staff)
 
 export default router

@@ -18,31 +18,36 @@ const Add_New_Listing = async (req ,res) => {
 
         const user_id = req.user.id
 
-        const {category_id , sub_category_id, title, currency , price, location, item_condition , 
-          description , is_business , staff_id
+        const { category_id , sub_category_id, title, currency ,
+            price, location, item_condition , description , staff_id
         } = req.body
-
-        const isBusiness = user.role === "Business"
 
         const user = await User.findByPk(user_id)
         if (!user) {
             return res.json({status: false , message: "user not found"})
         }
 
-        let validStaff = []
+        const isBusiness = user.role === "Business"
+        
+        let StaffIds = []
 
         if (isBusiness) {
 
-            validStaff = await Staff.findAll({
+        StaffIds  = Array.isArray(staff_id) ? staff_id : [staff_id]
+
+        if (StaffIds.length > 0) {
+                
+            const validStaff = await Staff.findAll({
                 where: {
-                    id: { [Op.in]: staff_id, },
+                    id: { [Op.in]: StaffIds, },
                     business_id: user_id
                 }
             })
             
-            if (validStaff.length !== staff_id.length) {
+            if (validStaff.length !== StaffIds.length) {
                 return res.json({ status: false, message: "Some staff not registered or invalid" })
             }
+         }
         }
 
         const listing = await Listing.create(
@@ -57,15 +62,14 @@ const Add_New_Listing = async (req ,res) => {
             item_condition,
             description,
             is_business: isBusiness,
-            staff_id : is_business === "true" ? staff_id : null
         },
         {
             transaction: t
         }
-    )
+        )
 
     if (isBusiness) {
-        const staffMapping  = staff_id.map(staffId => ({
+        const staffMapping  = StaffIds.map(staffId => ({
             listing_id: listing.id,
             staff_id: staffId
         }))
@@ -115,6 +119,21 @@ const Add_New_Staff = async (req ,res) => {
             return res.json({status: false , message: "User Not found"})            
         }
 
+        if (user.role !== "Business") {
+            res.json({status: false , message: "only business can add staff"})
+        }
+
+        const existingStaff = await Staff.findOne({
+            where: {
+                business_id: user_id,
+                phone_number: phone_number
+            }
+        })
+
+        if (existingStaff) {
+            return res.json({status: false , message: "staff already existed"})
+        }
+
         const AddStaff = await Staff.create({
             business_id: user_id,
             name,
@@ -155,8 +174,113 @@ const get_StaffList = async (req ,res) => {
     }
 }
 
+const edit_staff_details = async (req ,res ) => {
+    try {
+        const user_id = req.user.id 
+        const staff_id = req.params.staff_id
+
+        const {name , email , whatsapp_number , phone_number} = req.body
+        
+        const user = await User.findByPk(user_id)
+        if (!user) {
+            return res.json({status: false , message: "User Invalid!"})
+        }
+
+        if (user.role !== "Business") {
+            return res.json({status: false , message: "only Business can edit staff details"})
+        }
+        
+        const staff = await Staff.findOne({
+            where: {
+                id: staff_id,
+                business_id: user_id
+            }
+        })
+
+        if (!staff) {
+            return res.json({status: false , message: "staff not found"})
+        }
+
+        if (phone_number) {
+            const existingStaff = await Staff.findOne({
+                where: {
+                    business_id: user_id,
+                    phone_number: phone_number,
+                    id: {[Op.ne]: staff_id}
+                }
+            })
+
+            if (existingStaff) {
+                return res.json({
+                    status: false,
+                    message: "another staff already exist with these phone number"
+                })
+            }
+        }
+
+        const updateData = {}
+
+        if (name !== undefined) updateData.name = name
+        if (email !== undefined) updateData.email = email
+        if (phone_number !== undefined) updateData.phone_number = phone_number
+        if (whatsapp_number !== undefined) updateData.whatsapp_number = whatsapp_number
+        
+        await staff.update(updateData)
+
+        return res.json({
+            status: true,
+            message: "details edited successfully",
+            data: staff
+        })        
+
+    } catch (error) {
+        return res.json({status: false , message: error.message})
+    }
+}
+
+const delete_staff = async (req ,res) => {
+    try {
+
+        const user_id = req.user.id
+
+        const staff_id = req.params.staff_id
+
+        const user = await User.findByPk(user_id)
+        if (!user) {
+            return res.json({status: false , message: "user not found"})
+        }
+
+        if (user.role !== "Business") {
+            return res.json({status: false , message: "only business can delete staff"})
+        }
+
+        const staff = await Staff.findOne({
+            where: {
+                id: staff_id,
+                business_id: user_id
+            }
+        })
+
+        if (!staff) {
+            returnres.json({status: false , message: "Staff not found"})
+        }
+
+        await staff.destroy()
+
+        return res.json({
+            status: true,
+            message: "staff deleted successfully",
+        })
+        
+    } catch (error) {
+        return res.json({status: false , message: error.message})
+    }
+}
+
 export {
     Add_New_Listing,
     Add_New_Staff,
-    get_StaffList
+    get_StaffList,
+    edit_staff_details,
+    delete_staff
 }
