@@ -64,15 +64,6 @@ const Listing = sequelize.define("listing" ,
             type: DataTypes.BOOLEAN,
             defaultValue: false
         },
-        staff_id: {
-            type: DataTypes.INTEGER,
-            allowNull: true,
-            references: {
-                model: "staff",
-                key: "id"
-            },
-            onDelete: "CASCADE"
-        }
     },
     {
         tableName: "listing",
