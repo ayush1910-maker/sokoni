@@ -22,7 +22,7 @@ const Add_New_Listing = async (req ,res) => {
           description , is_business , staff_id
         } = req.body
 
-        const isBusiness = is_business === true || is_business === "true"
+        const isBusiness = user.role === "Business"
 
         const user = await User.findByPk(user_id)
         if (!user) {
@@ -56,7 +56,7 @@ const Add_New_Listing = async (req ,res) => {
             location,
             item_condition,
             description,
-            is_business,
+            is_business: isBusiness,
             staff_id : is_business === "true" ? staff_id : null
         },
         {
