@@ -6,6 +6,7 @@ import cors from "cors"
 import { swaggerUi, swaggerSpec } from './src/utils/swagger.js';
 import database from "./src/db/db.js"
 import config from "./src/db/envConfig.js"
+import "./src/utils/associations.js"
 
 import userRouter from "./src/routes/user.routes.js"
 import adminRouter from "./src/routes/admin.routes.js"
