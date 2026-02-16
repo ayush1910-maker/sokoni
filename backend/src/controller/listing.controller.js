@@ -5,6 +5,7 @@ import ListingPhoto from "../models/listingPhoto.models.js";
 import Staff from "../models/staff.models.js";
 import User from "../models/user.models.js";
 import ListingStaff from "../models/listingStaff.models.js"
+import SubCategory from "../models/subCategory.models.js";
 
 const Add_New_Listing = async (req ,res) => {
 
@@ -101,6 +102,337 @@ const Add_New_Listing = async (req ,res) => {
         data: listing
     })
         
+    } catch (error) {
+        await t.rollback()
+        return res.json({status: false , message: error.message})
+    }
+}
+
+const my_listing = async (req , res) => {
+    try {
+        const user_id = req.user.id
+
+        const user = await User.findByPk(user_id)
+        if (!user) {
+            return res.json({status: false , message: "user not found"})
+        }
+
+        const listings = await Listing.findAll({
+            where: {user_id},
+            attributes: [
+                "id",
+                "title",
+                "currency",
+                "price",
+                "item_condition",
+                "description",
+                "created_at"
+            ],
+            include: [
+                {
+                    model: ListingPhoto,
+                    as: "photos",
+                    attributes: ["id", "image_url"]
+                },
+                {
+                    model: Staff,
+                    as: "staff",
+                    attributes: ["id" , "name"],
+                    through: { attributes: [] }
+                }
+            ],
+            order: [["created_at" , "DESC"]]
+        })
+
+        return res.json({
+            status: true,
+            message: "your listing fetched!",
+            data: listings
+        })
+        
+    } catch (error) {
+        return res.json({status: false , message: error.message})
+    }
+}
+
+const edit_listing = async (req, res) => {
+
+    const t = await sequelize.transaction()
+
+    try {
+
+        const user_id = req.user.id
+        const listing_id = req.params.listing_id
+
+        const user = await User.findByPk(user_id)
+        if (!user) {
+            await t.rollback()
+            return res.json({ status: false, message: "Unauthorized" })
+        }
+
+        const listing = await Listing.findOne({
+            where: { id: listing_id, user_id }
+        })
+
+        if (!listing) {
+            await t.rollback()
+            return res.json({ status: false, message: "Listing not found" })
+        }
+
+        const {
+            category_id,
+            sub_category_id,
+            title,
+            currency,
+            price,
+            location,
+            item_condition,
+            description,
+            staff_id
+        } = req.body
+
+        if (category_id && sub_category_id) {
+            const validSub = await SubCategory.findOne({
+                where: {
+                    id: sub_category_id,
+                    category_id: category_id
+                }
+            })
+
+            if (!validSub) {
+                await t.rollback()
+                return res.json({
+                    status: false,
+                    message: "Invalid subcategory for selected category"
+                })
+            }
+        }
+
+        if (user.role !== "Business" && staff_id !== undefined) {
+            await t.rollback()
+            return res.json({
+                status: false,
+                message: "Only Business account can assign staff"
+            })
+        }
+
+        const updateData = {}
+
+        if (category_id !== undefined) updateData.category_id = category_id
+        if (sub_category_id !== undefined) updateData.sub_category_id = sub_category_id
+        if (title !== undefined) updateData.title = title
+        if (currency !== undefined) updateData.currency = currency
+        if (price !== undefined) updateData.price = price
+        if (location !== undefined) updateData.location = location
+        if (item_condition !== undefined) updateData.item_condition = item_condition
+        if (description !== undefined) updateData.description = description
+
+        await listing.update(updateData, { transaction: t })
+
+
+        if (user.role === "Business" && staff_id !== undefined) {
+
+            let StaffIds = Array.isArray(staff_id) ? staff_id : [staff_id]
+
+            if (StaffIds.length > 0) {
+
+                const validStaff = await Staff.findAll({
+                    where: {
+                        id: { [Op.in]: StaffIds },
+                        business_id: user_id
+                    }
+                })
+
+                if (validStaff.length !== StaffIds.length) {
+                    await t.rollback()
+                    return res.json({
+                        status: false,
+                        message: "Some staff not registered or invalid"
+                    })
+                }
+
+                const existingMappings = await ListingStaff.findAll({
+                    where: { listing_id }
+                })
+
+                const existingStaffIds = existingMappings.map(m => m.staff_id)
+
+                const newStaffToAdd = StaffIds.filter(
+                    id => !existingStaffIds.includes(Number(id))
+                )
+
+                if (newStaffToAdd.length > 0) {
+                    const staffMapping = newStaffToAdd.map(staffId => ({
+                        listing_id,
+                        staff_id: staffId
+                    }))
+
+                    await ListingStaff.bulkCreate(staffMapping, {
+                        transaction: t
+                    })
+                }
+            }
+        }
+
+        // ========================
+        if (req.files && req.files.length > 0) {
+
+            const existingPhotoCount = await ListingPhoto.count({
+                where: { listing_id }
+            })
+
+            const totalPhotos = existingPhotoCount + req.files.length
+
+            if (totalPhotos > 10) {
+                await t.rollback()
+                return res.json({
+                    status: false,
+                    message: `Maximum 10 photos allowed. Currently ${existingPhotoCount} exist.`
+                })
+            }
+
+            const newPhotos = req.files.map(file => ({
+                listing_id,
+                image_url: file.filename
+            }))
+
+            await ListingPhoto.bulkCreate(newPhotos, {
+                transaction: t
+            })
+        }
+
+        await t.commit()
+
+        return res.json({
+            status: true,
+            message: "Listing updated successfully"
+        })
+
+    } catch (error) {
+        await t.rollback()
+        return res.json({ status: false , message: error.message })
+    }
+}
+
+const delete_listing_photo = async (req, res) => {
+    try {
+
+        const user_id = req.user.id
+        const { photo_id } = req.params
+
+        const photo = await ListingPhoto.findByPk(photo_id, {
+            include: {
+                model: Listing,
+                as: "listing"
+            }
+        })
+
+        if (!photo || photo.listing.user_id !== user_id) {
+            return res.json({
+                status: false,
+                message: "Not authorized"
+            })
+        }
+
+        await photo.destroy()
+
+        return res.json({
+            status: true,
+            message: "Photo deleted successfully"
+        })
+
+    } catch (error) {
+        return res.json({ status: false, message: error.message })
+    }
+}
+
+const remove_listing_staff = async (req, res) => {
+    try {
+
+        const user_id = req.user.id
+        const { listing_id, staff_id } = req.params
+
+        const user = await User.findByPk(user_id)
+        if (!user) {
+            return res.json({ status: false, message: "Unauthorized" })
+        }
+
+        const listing = await Listing.findOne({
+            where: { id: listing_id, user_id }
+        })
+
+        if (!listing) {
+            return res.json({ status: false, message: "Listing not found" })
+        }
+
+        const deleted = await ListingStaff.destroy({
+            where: {
+                listing_id,
+                staff_id
+            }
+        })
+
+        if (!deleted) {
+            return res.json({
+                status: false,
+                message: "Staff not attached to this listing"
+            })
+        }
+
+        return res.json({
+            status: true,
+            message: "Staff removed from listing successfully"
+        })
+
+    } catch (error) {
+        return res.json({ status: false, message: error.message })
+    }
+}
+
+const delete_listing = async (req  ,res) => {
+    const t = await sequelize.transaction()
+    
+    try {
+
+        const user_id = req.user.id
+        const listing_id = req.params.listing_id
+
+        const user = await User.findByPk(user_id)
+        if (!user) {
+            await t.rollback()
+            return res.json({ status: false, message: "Unauthorized" })
+        }
+
+        const listing = await Listing.findOne({
+            where: {id: listing_id , user_id}
+        })
+
+        if (!listing) {
+            await t.rollback()
+            return res.json({status: false , message: "Listing not found"})
+        }
+
+        await ListingPhoto.destroy({
+            where: { listing_id },
+            transaction: t
+        })
+
+    
+        await ListingStaff.destroy({
+            where: { listing_id },
+            transaction: t
+        })
+
+    
+        await listing.destroy({ transaction: t })
+
+        await t.commit()
+
+        return res.json({
+            status: true,
+            message: "Listing deleted successfully"
+        })
+
     } catch (error) {
         await t.rollback()
         return res.json({status: false , message: error.message})
@@ -282,5 +614,10 @@ export {
     Add_New_Staff,
     get_StaffList,
     edit_staff_details,
-    delete_staff
+    delete_staff,
+    my_listing,
+    edit_listing,
+    delete_listing,
+    delete_listing_photo,
+    remove_listing_staff
 }
