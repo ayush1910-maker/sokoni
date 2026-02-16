@@ -6,10 +6,10 @@ import Category from "../models/category.models.js"
 import SubCategory from "../models/subCategory.models.js"
 import ListingStaff from "../models/listingStaff.models.js"
 
-
 User.hasMany(Listing, {
     foreignKey: "user_id",
-    as: "listings"
+    as: "listings",
+    onDelete: "CASCADE"
 })
 
 Listing.belongsTo(User, {
@@ -17,9 +17,11 @@ Listing.belongsTo(User, {
     as: "user"
 })
 
+
 Listing.hasMany(ListingPhoto, {
     foreignKey: "listing_id",
-    as: "photos"
+    as: "photos",
+    onDelete: "CASCADE"
 })
 
 ListingPhoto.belongsTo(Listing, {
@@ -30,7 +32,8 @@ ListingPhoto.belongsTo(Listing, {
 
 User.hasMany(Staff, {
     foreignKey: "business_id",
-    as: "staff"
+    as: "staff",
+    onDelete: "CASCADE"
 })
 
 Staff.belongsTo(User, {
@@ -41,7 +44,8 @@ Staff.belongsTo(User, {
 
 Category.hasMany(SubCategory, {
     foreignKey: "category_id",
-    as: "subCategories"
+    as: "subCategories",
+    onDelete: "CASCADE"
 })
 
 SubCategory.belongsTo(Category, {
@@ -49,15 +53,42 @@ SubCategory.belongsTo(Category, {
     as: "category"
 })
 
+
+Category.hasMany(Listing, {
+    foreignKey: "category_id",
+    as: "listings"
+})
+
+SubCategory.hasMany(Listing, {
+    foreignKey: "sub_category_id",
+    as: "listings"
+})
+
+Listing.belongsTo(Category, {
+    foreignKey: "category_id",
+    as: "category"
+})
+
+Listing.belongsTo(SubCategory, {
+    foreignKey: "sub_category_id",
+    as: "subCategory"
+})
+
+
 Listing.belongsToMany(Staff, {
-  through: "listing_staff",
-  foreignKey: "listing_id"
-});
+    through: ListingStaff,
+    foreignKey: "listing_id",
+    otherKey: "staff_id",
+    as: "staff"
+})
 
 Staff.belongsToMany(Listing, {
-  through: "listing_staff",
-  foreignKey: "staff_id"
-});
+    through: ListingStaff,
+    foreignKey: "staff_id",
+    otherKey: "listing_id",
+    as: "listings"
+})
+
 
 export {
     User,
@@ -65,5 +96,6 @@ export {
     Listing,
     ListingPhoto,
     Category,
-    SubCategory
+    SubCategory,
+    ListingStaff
 }
