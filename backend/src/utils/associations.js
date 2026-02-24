@@ -5,6 +5,7 @@ import User from "../models/user.models.js"
 import Category from "../models/category.models.js"
 import SubCategory from "../models/subCategory.models.js"
 import ListingStaff from "../models/listingStaff.models.js"
+import Favourites from "../models/favourites.models.js"
 
 User.hasMany(Listing, {
     foreignKey: "user_id",
@@ -89,6 +90,28 @@ Staff.belongsToMany(Listing, {
     as: "listings"
 })
 
+
+Favourites.belongsTo(User, {
+    foreignKey: "user_id",
+    as: "user"
+})
+
+Favourites.belongsTo(Listing, {
+    foreignKey: "listing_id",
+    as: "listing"
+})
+
+User.hasMany(Favourites, {
+    foreignKey: "user_id",
+    as: "favourites",
+    onDelete: "CASCADE"
+})
+
+Listing.hasMany(Favourites, {
+    foreignKey: "listing_id",
+    as: "favourites",
+    onDelete: "CASCADE"
+})
 
 export {
     User,
