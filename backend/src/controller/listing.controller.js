@@ -6,6 +6,7 @@ import Staff from "../models/staff.models.js";
 import User from "../models/user.models.js";
 import ListingStaff from "../models/listingStaff.models.js"
 import SubCategory from "../models/subCategory.models.js";
+import Favourites from "../models/favourites.models.js";
 
 const Add_New_Listing = async (req ,res) => {
 
@@ -609,6 +610,114 @@ const delete_staff = async (req ,res) => {
     }
 }
 
+const add_favourite = async (req, res) => {
+    try {
+
+        const user_id = req.user.id
+
+        const {listing_id} = req.body
+
+        const listing = await Listing.findByPk(listing_id)
+        if (!listing) {
+            return res.json({status: false , message: "listing not found"})
+        }
+
+        const alreadyFavourite = await Favourites.findOne({
+            where: {
+                user_id: user_id,
+                listing_id: listing_id
+            }
+        })
+
+        if (alreadyFavourite) {
+            return res.json({status: false , message: "listing already in favourites"})
+        }
+
+        const favourites = await Favourites.create({
+            user_id: user_id,
+            listing_id: listing_id
+        })
+
+        return res.json({
+            status: true,
+            message: "addedd to favurites",
+            data: favourites
+        })
+        
+    } catch (error) {
+        return res.json({status: false , message: error.message})
+    }
+}
+
+const home_screen = async (req ,res) => {
+    try {
+
+        const user_id = req.user.id
+
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const offset = (page - 1) * limit;
+
+        const user = await user.findByPk(user_id , {
+            attributes: { exclude:  ["password"] },
+        })
+
+        const { count, rows: listings } = await Listing.findAndCountAll({
+            order: [["createdAt", "DESC"]],
+            limit,
+            offset,
+            include: [
+                {
+                    model: ListingPhoto,
+                    as: "photos",
+                    attributes: ["id", "image_url"],
+                },
+                {
+                   model: Category,
+                   as: "category",
+                   attributes: ["id", "name"],
+                },
+                {
+                    model: SubCategory,
+                    as: "subCategory",
+                    attributes: ["id", "name"],
+                },
+                {
+                    model: Favourites,
+                    as: "favourites",
+                    where: { user_id: user_id },
+                    required: false,
+                    attributes: ["id"],
+                },
+            ],
+        });
+
+        const formattedListings = listings.map((listing) => {
+            const listingData = listing.toJSON();
+            listingData.isFavourite = listingData.favourites && listingData.favourites.length > 0;
+            delete listingData.favourites;
+            return listingData;
+        });
+
+    return res.status(200).json({
+      status: true,
+      message: "Home data fetched successfully",
+      data: {
+        user,
+        listings: formattedListings,
+        pagination: {
+          total: count,
+          currentPage: page,
+          totalPages: Math.ceil(count / limit),
+        },
+      },
+    });
+
+    } catch (error) {
+        return res.json({status: false , message: error.message})
+    }
+}
+
 export {
     Add_New_Listing,
     Add_New_Staff,
@@ -619,5 +728,7 @@ export {
     edit_listing,
     delete_listing,
     delete_listing_photo,
-    remove_listing_staff
+    remove_listing_staff,
+    add_favourite,
+    home_screen
 }
