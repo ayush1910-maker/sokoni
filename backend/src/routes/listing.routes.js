@@ -3,7 +3,7 @@ import Joi from "joi"
 import { upload } from "../utils/multer.js"
 import verifyJWT from "../middlewares/auth.middleware.js"
 
-import { Add_New_Listing, Add_New_Staff, delete_listing, delete_listing_photo, delete_staff, edit_listing, edit_staff_details, get_StaffList, my_listing, remove_listing_staff } from "../controller/listing.controller.js"
+import { add_favourite, Add_New_Listing, Add_New_Staff, delete_listing, delete_listing_photo, delete_staff, edit_listing, edit_staff_details, get_StaffList, home_screen, my_listing, remove_listing_staff } from "../controller/listing.controller.js"
 import { validate } from "../utils/validate.js"
 
 const router = express.Router()
@@ -803,5 +803,131 @@ router.patch("/edit-staff-details/:staff_id" , validate(Joi.object({
  */
 
 router.delete("/delete-staff/:staff_id" , verifyJWT , delete_staff)
+
+/**
+ * @swagger
+ * /api/v1/listing/add-favourites:
+ *   post:
+ *     summary: Add Listing to Favourites
+ *     description: Add a listing to the logged-in user's favourites. User must be authenticated.
+ *     tags:
+ *       - Favourites
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - listing_id
+ *             properties:
+ *               listing_id:
+ *                 type: integer
+ *                 example: 10
+ *                 description: ID of the listing to add into favourites
+ *     responses:
+ *       200:
+ *         description: Favourite added successfully or business logic response
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               examples:
+ *                 success:
+ *                   value:
+ *                     status: true
+ *                     message: addedd to favurites
+ *                     data:
+ *                       id: 1
+ *                       user_id: 3
+ *                       listing_id: 10
+ *                 listingNotFound:
+ *                   value:
+ *                     status: false
+ *                     message: listing not found
+ *                 alreadyFavourite:
+ *                   value:
+ *                     status: false
+ *                     message: listing already in favourites
+ *       401:
+ *         description: Unauthorized (Invalid or missing token)
+ */
+
+router.post("/add-favourites" , verifyJWT , add_favourite)
+
+/**
+ * @swagger
+ * /api/v1/listing/home:
+ *   get:
+ *     summary: Get Home Screen Data
+ *     description: Fetch home screen data including logged-in user details and paginated listings. Listings include photos, category, subcategory, and favourite status for the authenticated user.
+ *     tags:
+ *       - Home
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         required: false
+ *         schema:
+ *           type: integer
+ *         example: 1
+ *         description: Page number for pagination
+ *       - in: query
+ *         name: limit
+ *         required: false
+ *         schema:
+ *           type: integer
+ *         example: 10
+ *         description: Number of listings per page
+ *     responses:
+ *       200:
+ *         description: Home data fetched successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               example:
+ *                 status: true
+ *                 message: Home data fetched successfully
+ *                 data:
+ *                   user:
+ *                     id: 3
+ *                     name: John Doe
+ *                     email: john@example.com
+ *                   listings:
+ *                     - id: 10
+ *                       title: Sample Listing
+ *                       description: Listing description
+ *                       isFavourite: true
+ *                       photos:
+ *                         - id: 1
+ *                           image_url: https://example.com/image1.jpg
+ *                       category:
+ *                         id: 2
+ *                         name: Electronics
+ *                       subCategory:
+ *                         id: 5
+ *                         name: Mobiles
+ *                   pagination:
+ *                     total: 50
+ *                     currentPage: 1
+ *                     totalPages: 5
+ *       401:
+ *         description: Unauthorized (Invalid or missing token)
+ *       400:
+ *         description: Business logic error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               example:
+ *                 status: false
+ *                 message: Something went wrong
+ */
+
+router.get("/home" , verifyJWT , home_screen)
 
 export default router
